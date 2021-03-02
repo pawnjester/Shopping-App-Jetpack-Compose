@@ -1,7 +1,6 @@
 package com.example.composetest
 
 import android.os.Bundle
-import android.view.Gravity
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -17,15 +16,16 @@ import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.composetest.models.MainViewModel
@@ -40,34 +40,22 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            Start()
+            ShoppingItemScreen(viewModel = MainViewModel(repository = RepositoryImpl()))
         }
     }
 
-
     @ExperimentalFoundationApi
     @Composable
-    fun Start() {
-        HomeScreen(viewModel = MainViewModel(repository = RepositoryImpl()))
-    }
-
-    @ExperimentalFoundationApi
-    @Composable
-    fun HomeScreen(viewModel: MainViewModel) {
+    fun ShoppingItemScreen(
+        viewModel: MainViewModel
+    ) {
         val listOfItems by viewModel.listOfItems.observeAsState(emptyList())
-        ShoppingItemScreen(list = listOfItems, onClick = {
-            viewModel.addToCart(it)
-        })
+        val listOfCartItems by viewModel.numberOfCartItems.observeAsState(0)
 
-    }
-
-    @ExperimentalFoundationApi
-    @Composable
-    fun ShoppingItemScreen(list: List<ShoppingItem>, onClick: (ShoppingItem) -> Unit) {
         ComposeTestTheme {
             Surface {
                 Column {
-                    CommerceTopBar()
+                    CommerceTopBar(listOfCartItems) { }
                     LazyVerticalGrid(
                         cells = GridCells.Fixed(2),
                         modifier = Modifier.padding(
@@ -75,8 +63,11 @@ class MainActivity : AppCompatActivity() {
                             end = 12.dp
                         )
                     ) {
-                        items(list.size) { shoppingItem ->
-                            ShoppingItemCard(item = list[shoppingItem], onClick = onClick)
+                        items(listOfItems.size) { shoppingItem ->
+                            ShoppingItemCard(item = listOfItems[shoppingItem],
+                                onClick = {
+                                    viewModel.addOrRemoveFromCart(it)
+                                })
                         }
                     }
 
@@ -86,8 +77,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     @Composable
-    fun ShoppingItemCard(item: ShoppingItem, onClick: (ShoppingItem) -> Unit) {
-        Card(elevation = 4.dp, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)) {
+    fun ShoppingItemCard(
+        item: ShoppingItem,
+        onClick: (ShoppingItem) -> Unit
+    ) {
+        var isAdd by rememberSaveable { mutableStateOf(true) }
+        Card(
+            elevation = 4.dp,
+            modifier = Modifier.padding(top = 10.dp, bottom = 4.dp, end = 8.dp)
+        ) {
             Column(modifier = Modifier.padding(horizontal = 4.dp)) {
                 Image(
                     painter = painterResource(R.drawable.random_image),
@@ -111,17 +109,29 @@ class MainActivity : AppCompatActivity() {
                         modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
                     )
                     Box {
-                        Image(
-                            painter = painterResource(R.drawable.ic_plus_green),
-                            contentDescription = "add button",
-                            alignment = Alignment.TopEnd,
-                        )
-                        Image(
-                            painter = painterResource(R.drawable.ic_minus_circle),
-                            contentDescription = "remove button",
-                            alignment = Alignment.TopEnd,
-                            modifier = Modifier.clickable { onClick(item) }
-                        )
+
+                        if (isAdd) {
+                            Image(
+                                painter = painterResource(R.drawable.ic_plus_green),
+                                contentDescription = "add button",
+                                alignment = Alignment.TopEnd,
+                                modifier = Modifier.clickable {
+                                    isAdd = !isAdd
+                                    onClick(item)
+                                }
+                            )
+                        } else {
+                            Image(
+                                painter = painterResource(R.drawable.ic_minus_circle),
+                                contentDescription = "remove button",
+                                alignment = Alignment.TopEnd,
+                                modifier = Modifier.clickable {
+                                    isAdd = !isAdd
+                                    onClick(item)
+                                }
+                            )
+
+                        }
                     }
                 }
             }
@@ -130,14 +140,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     @Composable
-    fun CommerceTopBar() {
+    fun CommerceTopBar(number: Int, onChange: () -> Unit) {
         TopAppBar(
             title = {
-                Text(text = "Shop Now")
+                Text(text = "Place Order", textAlign = TextAlign.Center)
             },
             backgroundColor = MaterialTheme.colors.primary,
             actions = {
-                CartItem()
+                Cart(number, onChange)
             },
             elevation = 4.dp
         )
@@ -145,32 +155,34 @@ class MainActivity : AppCompatActivity() {
 
 
     @Composable
-    fun CartItem(text : String = "") {
+    fun Cart(items: Int, onChange: () -> Unit) {
         Box() {
-            IconButton(onClick = { }) {
+            IconButton(onClick = onChange) {
                 Icon(
                     painter = painterResource(R.drawable.ic_shopping_cart),
                     contentDescription = "shopping cart"
                 )
             }
-            Circle()
-            Text(
-                text = text, style = MaterialTheme.typography.h6.copy(
-                    color = Color.White,
-                    fontSize = 18.sp
-                )
-            )
+            if (items > 0) {
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(Color.Red).fillMaxWidth()
+                ) {
+                    Text(
+                        text = items.toString(), style = MaterialTheme.typography.h6.copy(
+                            color = Color.White,
+                            fontSize = 16.sp
+                        )
+                    )
+                }
+            }
         }
     }
 
-
     @Composable
-    fun Circle() {
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .clip(CircleShape)
-                .background(Color.Red)
-        )
+    fun CartScreen() {
+
     }
 }

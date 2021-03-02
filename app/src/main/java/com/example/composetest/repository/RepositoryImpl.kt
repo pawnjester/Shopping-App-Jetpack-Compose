@@ -21,6 +21,10 @@ class RepositoryImpl : Repository {
         return listOfCart
     }
 
+    override suspend fun getCartItems(): List<ShoppingItem> {
+        return listOfCart
+    }
+
     private fun shoppingLists(): List<ShoppingItem> {
         return listOf(
             ShoppingItem("1", "Bag", "This is a gucci bag"),
@@ -28,7 +32,8 @@ class RepositoryImpl : Repository {
             ShoppingItem("3", "Food", "Eat and enjoy the sea breeze"),
             ShoppingItem("4", "Laptop", "Eat and enjoy the sea breeze"),
             ShoppingItem("5", "Pliers", "This is a pliers"),
-            ShoppingItem("6", "Scanner", "Use the scanner to play around")
+            ShoppingItem("6", "Scanner", "Use the scanner to play around"),
+            ShoppingItem("7", "Rice", "This is tasteful rice")
         )
     }
 }
